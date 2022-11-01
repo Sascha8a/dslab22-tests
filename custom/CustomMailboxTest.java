@@ -1,7 +1,6 @@
-package dslab.mailbox;
+package dslab.custom;
 
-import static org.hamcrest.CoreMatchers.containsString;
-
+import dslab.mailbox.IMailboxServer;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.junit.After;
@@ -17,10 +16,8 @@ import dslab.util.Config;
 
 public class CustomMailboxTest extends TestBase {
 
-    private static final Log LOG = LogFactory.getLog(MailboxServerProtocolTest.class);
-
+    private static final Log LOG = LogFactory.getLog(CustomMailboxTest.class);
     private String componentId = "mailbox-earth-planet";
-
     private IMailboxServer component;
     private int dmapServerPort;
     private int dmtpServerPort;
@@ -45,63 +42,156 @@ public class CustomMailboxTest extends TestBase {
     }
 
     @Test(timeout = 15000)
-    public void loginAndLogout_withValidLogin() throws Exception {
+    public void login_withInValidLogin() throws Exception {
         try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
             client.verify("ok DMAP");
+            client.sendAndVerify("login INVALID INVALID", "error");
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void login_restrictedAccess() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("list", "error");
+            client.sendAndVerify("show 1", "error");
+            client.sendAndVerify("delete 1", "error");
+            client.sendAndVerify("logout", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void login_twice() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("login trillian 12345", "ok");
+            client.sendAndVerify("login trillian 12345", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void login_logout() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
             client.sendAndVerify("login trillian 12345", "ok");
             client.sendAndVerify("logout", "ok");
+
             client.sendAndVerify("quit", "ok bye");
         }
     }
 
     @Test(timeout = 15000)
-    public void login_withInvalidLogin_returnsError() throws Exception {
+    public void login_wrongPassword() throws Exception {
         try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
             client.verify("ok DMAP");
-            client.sendAndVerify("login trillian WRONGPW", "error");
+
+            client.sendAndVerify("login trillian INVALID", "error");
+
             client.sendAndVerify("quit", "ok bye");
         }
     }
 
     @Test(timeout = 15000)
-    public void acceptDmtpMessage_listDmapMessage() throws Exception {
-
-        // accept a message via DMTP (to trillian)
-        try (JunitSocketClient client = new JunitSocketClient(dmtpServerPort, err)) {
-            client.verify("ok DMTP");
-            client.sendAndVerify("begin", "ok");
-            client.sendAndVerify("from arthur@earth.planet", "ok");
-            client.sendAndVerify("to trillian@earth.planet", "ok 1");
-            client.sendAndVerify("subject hello", "ok");
-            client.sendAndVerify("data hello from junit", "ok");
-            client.sendAndVerify("send", "ok");
-            client.sendAndVerify("quit", "ok bye");
-        }
-
-        // list the message via DMAP list
+    public void login_arguments() throws Exception {
         try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
             client.verify("ok DMAP");
+
+            client.sendAndVerify("login", "error");
+            client.sendAndVerify("login INVALID", "error");
+            client.sendAndVerify("login INVALID INVALID", "error");
+            client.sendAndVerify("login INVALID INVALID INVALID", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void list_arguments() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
             client.sendAndVerify("login trillian 12345", "ok");
+            client.sendAndVerify("list INVALID", "error");
 
-            client.send("list");
-            String listResult = client.listen();
-            err.checkThat(listResult, containsString("arthur@earth.planet hello"));
-
-            client.sendAndVerify("logout", "ok");
             client.sendAndVerify("quit", "ok bye");
         }
     }
 
     @Test(timeout = 15000)
-    public void dmtpMessage_withUnknownRecipient_returnsError() throws Exception {
-        // accept a message via DMTP (to trillian)
-        try (JunitSocketClient client = new JunitSocketClient(dmtpServerPort, err)) {
-            client.verify("ok DMTP");
-            client.sendAndVerify("begin", "ok");
-            client.sendAndVerify("from arthur@earth.planet", "ok");
-            client.sendAndVerify("to unknown@earth.planet", "error unknown");
+    public void show_arguments() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("login trillian 12345", "ok");
+            client.sendAndVerify("show", "error");
+            client.sendAndVerify("show INVALID", "error");
+            client.sendAndVerify("show INVALID INVALID", "error");
+
             client.sendAndVerify("quit", "ok bye");
         }
     }
 
+    @Test(timeout = 15000)
+    public void delete_arguments() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("login trillian 12345", "ok");
+            client.sendAndVerify("delete", "error");
+            client.sendAndVerify("delete INVALID", "error");
+            client.sendAndVerify("delete INVALID INVALID", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void logout_arguments() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("logout", "error");
+
+            client.sendAndVerify("login trillian 12345", "ok");
+            client.sendAndVerify("logout INVALID", "error");
+            client.sendAndVerify("logout INVALID INVALID", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void quit_arguments() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+
+            client.sendAndVerify("quit INVALID", "error");
+
+            client.sendAndVerify("quit", "ok bye");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void protocolError() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+            client.sendAndVerify("INVALID", "error");
+        }
+    }
+
+    @Test(timeout = 15000)
+    public void protocolError_noInput() throws Exception {
+        try (JunitSocketClient client = new JunitSocketClient(dmapServerPort, err)) {
+            client.verify("ok DMAP");
+            client.sendAndVerify("", "error");
+        }
+    }
 }
