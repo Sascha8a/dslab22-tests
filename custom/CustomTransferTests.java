@@ -128,6 +128,10 @@ public class CustomTransferTests extends TestBase {
             client.sendAndVerify("begin", "ok");
             client.sendAndVerify("from trillian@earth.planet", "ok");
             client.sendAndVerify("to trillian@earth.planet,INVALID", "error");
+            client.sendAndVerify("to INVALID,INVALID", "error");
+            client.sendAndVerify("to @", "error");
+            client.sendAndVerify("to @,@", "error");
+
             client.sendAndVerify("subject hello", "ok");
             client.sendAndVerify("data hello from junit", "ok");
             client.sendAndVerify("send", "error");
